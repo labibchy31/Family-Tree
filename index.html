@@ -3,10 +3,10 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1200">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0056b3">
-    <title>My Family Tree - Fixed</title>
+    <title>My Family Tree - Perfect Fit</title>
     <style>
         body {
             background-color: #f0f2f5;
@@ -31,12 +31,23 @@
 
         .wrapper {
             width: 100%;
-            display: flex;
-            justify-content: center;
+            overflow-x: auto;
+            text-align: center;
             padding-bottom: 50px;
+            scroll-behavior: smooth;
         }
 
-        /* Tree Structure */
+        .tree {
+            display: inline-block;
+            min-width: max-content;
+            margin: 0 auto;
+            text-align: center;
+            /* Zoom works much better than scale for layout reflow in Chrome/Edge/Safari */
+            zoom: 1; 
+            transform-origin: top center;
+            transition: all 0.3s ease;
+        }
+
         .tree ul {
             padding-top: 25px;
             position: relative;
@@ -117,8 +128,13 @@
             min-width: 80px;
             box-shadow: 0 3px 6px rgba(0,0,0,0.1);
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
             position: relative;
+        }
+
+        .node:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 10;
         }
 
         .node:active {
@@ -154,22 +170,23 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             z-index: 1000;
             overflow: hidden;
-            min-width: 220px;
+            min-width: 200px;
         }
 
         .menu-btn {
             display: block;
             width: 100%;
-            padding: 16px 20px;
+            padding: 12px 16px;
             border: none;
             background: none;
             text-align: left;
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
             border-bottom: 1px solid #eee;
             font-family: inherit;
         }
+        .menu-btn:hover { background-color: #f8f9fa; }
         .menu-btn:last-child { border-bottom: none; }
         .menu-edit { color: #0056b3; }
         .menu-add { color: #28a745; }
@@ -196,58 +213,73 @@
             text-align: left;
         }
 
-        .modal h3 { margin-top: 0; font-size: 24px; }
-        .modal label { font-size: 16px; font-weight: bold; }
+        .modal h3 { margin-top: 0; font-size: 20px; color: #0056b3; }
+        .modal label { font-size: 14px; font-weight: bold; }
         .modal input, .modal textarea {
             width: 100%;
-            padding: 15px;
-            margin: 10px 0 20px 0;
+            padding: 12px;
+            margin: 8px 0 15px 0;
             border: 2px solid #ccc;
-            border-radius: 8px;
+            border-radius: 6px;
             box-sizing: border-box;
             font-family: inherit;
-            font-size: 18px;
+            font-size: 15px;
         }
         
         .modal button {
-            padding: 15px 25px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 15px;
         }
         .btn-save { background: #0056b3; color: white; float: right; }
         .btn-cancel { background: #ccc; color: black; }
 
         .tools {
             margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
+        
         .tools button {
             background: #dc3545;
             color: white;
             border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
+            transition: background 0.2s;
+        }
+        
+        .tools button.btn-fit {
+            background: #0056b3;
+        }
+
+        .tools button:hover {
+            opacity: 0.9;
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2>আমার ফ্যামিলি ট্রি (মোবাইল A4 ভিউ)</h2>
-        <p>পুরো স্ক্রিনে ট্রি দেখতে পাচ্ছেন। জুম করে নামের ওপর ক্লিক করুন।</p>
+        <h2>আমার ফ্যামিলি ট্রি</h2>
+        <p>ল্যাপটপ ও পিসিতে স্বয়ংক্রিয়ভাবে ফিট করা হয়েছে</p>
     </div>
 
-    <div class="wrapper">
+    <div class="wrapper" id="treeWrapper">
         <div class="tree" id="treeContainer">
         </div>
     </div>
 
     <div class="tools">
+        <button class="btn-fit" onclick="fitToScreen()">স্ক্রিনে ফিট করুন</button>
         <button onclick="resetTree()">রেসেট (ডিফল্ট ট্রি আনুন)</button>
     </div>
 
@@ -275,8 +307,7 @@
     </div>
 
     <script>
-        // Changed storage key to force a fresh render and clear out previous corrupted data
-        const STORAGE_KEY = 'myFamilyTreeApp_A4_v3_fixed';
+        const STORAGE_KEY = 'myFamilyTreeApp_Personal_Laptop_v2_fixed';
         let currentNode = null;
         let menu = document.getElementById('actionMenu');
 
@@ -362,11 +393,45 @@
         function initApp() {
             const savedData = localStorage.getItem(STORAGE_KEY);
             document.getElementById('treeContainer').innerHTML = savedData ? savedData : defaultTree;
+            
+            // Allow the DOM to render fully before calculating width
+            setTimeout(fitToScreen, 150);
+            window.addEventListener('resize', fitToScreen);
         }
 
         function saveToLocal() {
             const treeHTML = document.getElementById('treeContainer').innerHTML;
             localStorage.setItem(STORAGE_KEY, treeHTML);
+            fitToScreen();
+        }
+
+        function fitToScreen() {
+            const wrapper = document.getElementById('treeWrapper');
+            const tree = document.getElementById('treeContainer');
+            
+            // 1. Reset any zoom/scale to measure the true original width
+            tree.style.zoom = '1';
+            tree.style.transform = 'none';
+            
+            // Wait a tiny bit for the browser to reflow layout without zoom
+            setTimeout(() => {
+                const wrapperWidth = wrapper.clientWidth;
+                const treeWidth = tree.scrollWidth;
+                
+                if (treeWidth > wrapperWidth) {
+                    const scaleFactor = (wrapperWidth - 20) / treeWidth;
+                    
+                    // 2. Use CSS 'zoom' instead of 'transform'
+                    // 'zoom' correctly shrinks the bounding box, leaving no blank scroll space!
+                    tree.style.zoom = scaleFactor;
+                    
+                    // Fallback for Firefox (Firefox doesn't support 'zoom' but supports '-moz-transform')
+                    if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+                         tree.style.transform = 'scale(' + scaleFactor + ')';
+                         tree.style.transformOrigin = 'top center';
+                    }
+                }
+            }, 50);
         }
 
         document.addEventListener('click', () => { menu.style.display = 'none'; });
@@ -379,6 +444,10 @@
             document.getElementById('addParentBtn').style.display = isRoot ? 'block' : 'none';
 
             menu.style.display = 'block';
+            
+            // Scale correction for menu positioning if zoomed
+            const zoomLevel = document.getElementById('treeContainer').style.zoom || 1;
+            
             let x = e.clientX;
             let y = e.clientY;
             
