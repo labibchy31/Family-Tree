@@ -1,0 +1,492 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0056b3">
+    <title>My Family Tree - Fixed</title>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+            color: #333;
+        }
+
+        .header {
+            background: #0056b3;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h2 { margin: 0; font-size: 28px; }
+        .header p { margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; }
+
+        .wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding-bottom: 50px;
+        }
+
+        /* Tree Structure */
+        .tree ul {
+            padding-top: 25px;
+            position: relative;
+            margin: 0;
+            padding-left: 0;
+            display: flex;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .tree li {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            list-style-type: none;
+            position: relative;
+            padding: 25px 4px 0 4px;
+        }
+
+        /* Connecting Lines */
+        .tree li::before, .tree li::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 50%;
+            border-top: 2px solid #555;
+            width: 50%;
+            height: 25px;
+        }
+        
+        .tree li::after {
+            right: auto;
+            left: 50%;
+            border-left: 2px solid #555;
+        }
+
+        .tree li:only-child::after, .tree li:only-child::before {
+            display: none;
+        }
+        .tree li:only-child {
+            padding-top: 0;
+        }
+
+        .tree li:first-child::before, .tree li:last-child::after {
+            border: 0 none;
+        }
+        
+        .tree li:last-child::before {
+            border-right: 2px solid #555;
+            border-radius: 0;
+        }
+
+        .tree ul ul::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-left: 2px solid #555;
+            width: 0;
+            height: 25px;
+            margin-left: -1px;
+        }
+
+        ul.main-tree > li::before, ul.main-tree > li::after {
+            border: 0 none !important;
+        }
+        ul.main-tree > li {
+            padding-top: 0;
+        }
+
+        /* Node Styling */
+        .node {
+            border: 2px solid #333;
+            padding: 6px 8px;
+            border-radius: 6px;
+            background-color: #fff;
+            min-width: 80px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .node:active {
+            transform: scale(0.95);
+        }
+
+        .node .name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #111;
+            line-height: 1.3;
+        }
+
+        .node .spouse {
+            font-size: 11px;
+            color: #555;
+            margin-top: 4px;
+            border-top: 1px dashed #aaa;
+            padding-top: 3px;
+        }
+        
+        .node .spouse:empty {
+            display: none;
+        }
+
+        /* Action Menu (Popup) */
+        #actionMenu {
+            display: none;
+            position: fixed;
+            background: #fff;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 1000;
+            overflow: hidden;
+            min-width: 220px;
+        }
+
+        .menu-btn {
+            display: block;
+            width: 100%;
+            padding: 16px 20px;
+            border: none;
+            background: none;
+            text-align: left;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-family: inherit;
+        }
+        .menu-btn:last-child { border-bottom: none; }
+        .menu-edit { color: #0056b3; }
+        .menu-add { color: #28a745; }
+        .menu-del { color: #dc3545; }
+
+        /* Modal overlay */
+        #modalOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal {
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            text-align: left;
+        }
+
+        .modal h3 { margin-top: 0; font-size: 24px; }
+        .modal label { font-size: 16px; font-weight: bold; }
+        .modal input, .modal textarea {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0 20px 0;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 18px;
+        }
+        
+        .modal button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .btn-save { background: #0056b3; color: white; float: right; }
+        .btn-cancel { background: #ccc; color: black; }
+
+        .tools {
+            margin-top: 30px;
+        }
+        .tools button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>আমার ফ্যামিলি ট্রি (মোবাইল A4 ভিউ)</h2>
+        <p>পুরো স্ক্রিনে ট্রি দেখতে পাচ্ছেন। জুম করে নামের ওপর ক্লিক করুন।</p>
+    </div>
+
+    <div class="wrapper">
+        <div class="tree" id="treeContainer">
+        </div>
+    </div>
+
+    <div class="tools">
+        <button onclick="resetTree()">রেসেট (ডিফল্ট ট্রি আনুন)</button>
+    </div>
+
+    <div id="actionMenu">
+        <button class="menu-btn menu-edit" onclick="openEditModal()">✏️ নাম এডিট করুন</button>
+        <button class="menu-btn menu-add" id="addParentBtn" onclick="addParent()">⬆️ পিতা যোগ করুন</button>
+        <button class="menu-btn menu-add" onclick="addChild()">⬇️ সন্তান যোগ করুন</button>
+        <button class="menu-btn menu-del" onclick="deleteNode()">🗑️ মুছে ফেলুন</button>
+    </div>
+
+    <div id="modalOverlay">
+        <div class="modal">
+            <h3>তথ্য আপডেট করুন</h3>
+            <label>মূল নাম (বা সন্তানদের গ্রুপ):</label>
+            <textarea id="editName" rows="3"></textarea>
+            
+            <label>অতিরিক্ত তথ্য (যেমন: স্বামী/স্ত্রী):</label>
+            <input type="text" id="editSpouse" placeholder="স্ত্রী: আছকিরুন্নেছা">
+            
+            <div>
+                <button class="btn-cancel" onclick="closeModal()">বাতিল</button>
+                <button class="btn-save" onclick="saveEdits()">সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Changed storage key to force a fresh render and clear out previous corrupted data
+        const STORAGE_KEY = 'myFamilyTreeApp_A4_v3_fixed';
+        let currentNode = null;
+        let menu = document.getElementById('actionMenu');
+
+        const defaultTree = `
+            <ul class="main-tree">
+                <li>
+                    <div class="node" onclick="showMenu(event, this)">
+                        <div class="name">নসরত আলী</div>
+                    </div>
+                    <ul>
+                        <li>
+                            <div class="node" onclick="showMenu(event, this)">
+                                <div class="name">এয়ার আলী</div>
+                            </div>
+                            <ul>
+                                <li>
+                                    <div class="node" onclick="showMenu(event, this)"><div class="name">এমদাদ আলী</div></div>
+                                    <ul>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">আব্দুল মালেক<br>আব্দুল খালেক (খোলু মেকার)<br>আব্দুর রাজ্জাক (দুদু)</div></div></li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <div class="node" onclick="showMenu(event, this)">
+                                        <div class="name">সেরাজ উদ্দিন চৌধুরী</div>
+                                        <div class="spouse">স্ত্রী: আছকিরুন্নেছা</div>
+                                    </div>
+                                    <ul>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">শামছুদ্দিন দারোগা</div></div>
+                                            <ul><li><div class="node" onclick="showMenu(event, this)"><div class="name">জুনু<br>শাহাবুদ্দিন<br>রেনু<br>পাখি</div></div></li></ul>
+                                        </li>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">আমিনুল ইসলাম চৌ:</div></div>
+                                            <ul><li><div class="node" onclick="showMenu(event, this)"><div class="name">জাশু<br>মীরু<br>রিজু<br>রাফু<br>তৌফিক<br>ডেইজি</div></div></li></ul>
+                                        </li>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">শফিউল আলম চৌ:</div></div>
+                                            <ul><li><div class="node" onclick="showMenu(event, this)"><div class="name">১. রফিকুল<br>২. ইমরান<br>৩. মামুন<br>৪. খালেদ<br>৫. রিপন<br>৬. আফসার</div></div></li></ul>
+                                        </li>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">বিনু</div><div class="spouse">(জলপাইগুড়ি)<br>স্বামী: এ.বি. চৌধুরী (সওয়াদ মিয়া)</div></div></li>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">আনোয়ারা বেগম চৌধুরী</div><div class="spouse">(অনু)</div></div></li>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">নূরজাহান বেগম চৌধুরী</div></div></li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <div class="node" onclick="showMenu(event, this)">
+                                <div class="name">জুনাব আলী</div>
+                                <div class="spouse">স্ত্রী: আকরামুন নেসা</div>
+                            </div>
+                            <ul>
+                                <li>
+                                    <div class="node" onclick="showMenu(event, this)"><div class="name">মহিউদ্দিন চৌধুরী</div></div>
+                                    <ul>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">কামাল<br>কুতুব<br>দুলু<br>রাজধন<br>মনাধন<br>গাউস</div></div></li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <div class="node" onclick="showMenu(event, this)"><div class="name">খাদেম আলী</div></div>
+                                    <ul>
+                                        <li><div class="node" onclick="showMenu(event, this)"><div class="name">কালা মিয়া<br>মতু মিয়া<br>ভতু মিয়া<br>মংগল মিয়া<br>হাবিবা খাতুন<br>[অজ্ঞাত কন্যা]</div></div></li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <div class="node" onclick="showMenu(event, this)">
+                                        <div class="name">আছকিরুন্নেছা</div>
+                                        <div class="spouse">স্বামী: সেরাজ উদ্দিন</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="node" onclick="showMenu(event, this)"><div class="name">আফছারুন্নেছা</div></div>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <div class="node" onclick="showMenu(event, this)">
+                        <div class="name">বসরত আলী</div>
+                    </div>
+                </li>
+            </ul>
+        `;
+
+        function initApp() {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            document.getElementById('treeContainer').innerHTML = savedData ? savedData : defaultTree;
+        }
+
+        function saveToLocal() {
+            const treeHTML = document.getElementById('treeContainer').innerHTML;
+            localStorage.setItem(STORAGE_KEY, treeHTML);
+        }
+
+        document.addEventListener('click', () => { menu.style.display = 'none'; });
+
+        function showMenu(e, element) {
+            e.stopPropagation();
+            currentNode = element;
+            
+            const isRoot = element.parentElement.parentElement.classList.contains('main-tree');
+            document.getElementById('addParentBtn').style.display = isRoot ? 'block' : 'none';
+
+            menu.style.display = 'block';
+            let x = e.clientX;
+            let y = e.clientY;
+            
+            if (x + menu.offsetWidth > window.innerWidth) x = window.innerWidth - menu.offsetWidth - 10;
+            if (y + menu.offsetHeight > window.innerHeight) y = window.innerHeight - menu.offsetHeight - 10;
+            
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+        }
+
+        function openEditModal() {
+            const nameEl = currentNode.querySelector('.name');
+            const spouseEl = currentNode.querySelector('.spouse');
+            
+            document.getElementById('editName').value = nameEl ? nameEl.innerHTML.replace(/<br\s*[\/]?>/gi, "\n") : '';
+            document.getElementById('editSpouse').value = spouseEl ? spouseEl.innerText : '';
+            
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        function saveEdits() {
+            const newName = document.getElementById('editName').value.replace(/\n/g, "<br>");
+            const newSpouse = document.getElementById('editSpouse').value;
+            
+            let nameEl = currentNode.querySelector('.name');
+            if(!nameEl) {
+                nameEl = document.createElement('div');
+                nameEl.className = 'name';
+                currentNode.appendChild(nameEl);
+            }
+            nameEl.innerHTML = newName;
+
+            let spouseEl = currentNode.querySelector('.spouse');
+            if(newSpouse.trim() !== '') {
+                if(!spouseEl) {
+                    spouseEl = document.createElement('div');
+                    spouseEl.className = 'spouse';
+                    currentNode.appendChild(spouseEl);
+                }
+                spouseEl.innerText = newSpouse;
+            } else if(spouseEl) {
+                spouseEl.remove();
+            }
+
+            closeModal();
+            saveToLocal();
+        }
+
+        function addChild() {
+            let parentLi = currentNode.parentElement;
+            let ul = parentLi.querySelector(':scope > ul');
+            
+            if (!ul) {
+                ul = document.createElement('ul');
+                parentLi.appendChild(ul);
+            }
+            
+            let newLi = document.createElement('li');
+            newLi.innerHTML = '<div class="node" onclick="showMenu(event, this)"><div class="name">নতুন নাম</div></div>';
+            ul.appendChild(newLi);
+            saveToLocal();
+        }
+
+        function addParent() {
+            const treeContainer = document.getElementById('treeContainer');
+            const currentMainTree = treeContainer.querySelector('.main-tree');
+            
+            const newMainUl = document.createElement('ul');
+            newMainUl.className = 'main-tree';
+            
+            const newRootLi = document.createElement('li');
+            newRootLi.innerHTML = '<div class="node" onclick="showMenu(event, this)"><div class="name">নতুন পিতা/মাতা</div></div>';
+            
+            currentMainTree.className = ''; 
+            newRootLi.appendChild(currentMainTree);
+            newMainUl.appendChild(newRootLi);
+            
+            treeContainer.innerHTML = '';
+            treeContainer.appendChild(newMainUl);
+            
+            saveToLocal();
+        }
+
+        function deleteNode() {
+            if(confirm("আপনি কি নিশ্চিত যে এই নাম এবং এর নিচের সব শাখা মুছে ফেলতে চান?")) {
+                let li = currentNode.parentElement;
+                let parentUl = li.parentElement;
+                li.remove();
+                
+                if (parentUl.children.length === 0 && !parentUl.classList.contains('main-tree')) {
+                    parentUl.remove();
+                }
+                saveToLocal();
+            }
+        }
+
+        function resetTree() {
+            if(confirm("সব ডেটা মুছে ডিফল্ট ট্রিতে ফিরে যেতে চান?")) {
+                localStorage.removeItem(STORAGE_KEY);
+                initApp();
+            }
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
